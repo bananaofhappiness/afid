@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 clap = {version = "4.5.17", features = ["derive"]}
 criterion = "0.5.1"
-threadpool = "1.8.1"
 
 [[bench]]
 name = "benchmark"
