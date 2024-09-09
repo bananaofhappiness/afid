@@ -1,7 +1,15 @@
 [package]
 name = "afid"
 version = "0.1.0"
-edition = "2021"
+authors = ["Egor Kurtashkin <egorkurtashkin@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "A small and slow cmp/diff clone"
+readme = "README.md"
+homepage = "https://github.com/bananaofhappiness/afid"
+repository = "https://github.com/bananaofhappiness/afid"
+keywords = ["cli", "search", "file"]
+categories = ["command-line-utilities"]
+
 
 [dependencies]
 clap = {version = "4.5.17", features = ["derive"]}

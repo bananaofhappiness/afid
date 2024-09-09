@@ -1,5 +1,7 @@
+extern crate criterion;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::fs::File;
+extern crate afid;
 use afid::bench;
 
 fn criterion_benchmark(c: &mut Criterion){

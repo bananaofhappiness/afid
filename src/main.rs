@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::path::PathBuf;
+extern crate clap;
 use clap::Parser;
+extern crate afid;
 use afid::compare_files;
 pub mod error;
 use crate::error::Result;
