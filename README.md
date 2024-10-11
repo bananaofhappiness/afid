@@ -8,4 +8,5 @@ afid {FILE1} {FILE2}
 ```
 
 Link to crates: https://crates.io/crates/afid
+
 Link to github: https://github.com/bananaofhappiness/afid
