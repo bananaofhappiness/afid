@@ -1,13 +1,13 @@
 [package]
 name = "afid"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Egor Kurtashkin <egorkurtashkin@gmail.com>"]
 license = "MIT OR Apache-2.0"
 description = "A small and slow cmp/diff clone"
 readme = "README.md"
 homepage = "https://github.com/bananaofhappiness/afid"
 repository = "https://github.com/bananaofhappiness/afid"
-keywords = ["cli", "search", "file"]
+keywords = ["cli", "search", "file", "compare", "cmp", "diff"]
 categories = ["command-line-utilities"]
 
 

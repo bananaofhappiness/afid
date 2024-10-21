@@ -1,12 +1,13 @@
-Are Files Identical
+# Are Files Identical
 
-A small and slow cmp/diff clone.
+> A small cmp clone.
 
-Usage: simply run
+## Install
+```
+cargo install afid
+```
+
+## Usage
 ```
 afid {FILE1} {FILE2}
 ```
-
-Link to crates: https://crates.io/crates/afid
-
-Link to github: https://github.com/bananaofhappiness/afid
