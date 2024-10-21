@@ -8,7 +8,7 @@ description = "A small and slow cmp clone"
 readme = "README.md"
 homepage = "https://github.com/bananaofhappiness/afid"
 repository = "https://github.com/bananaofhappiness/afid"
-keywords = ["cli", "search", "file", "compare", "cmp", "diff"]
+keywords = ["cli", "search", "file", "compare", "cmp"] 
 categories = ["command-line-utilities"]
 
 
