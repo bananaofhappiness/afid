@@ -3,7 +3,7 @@ use std::path::PathBuf;
 extern crate clap;
 use clap::Parser;
 extern crate afid;
-use afid::compare_files;
+use afid::compare_files_threaded;
 pub mod error;
 use crate::error::Result;
 
@@ -17,7 +17,7 @@ fn main() -> Result<()>{
     let args = Cli::parse();
     let file1 = File::open(args.file1)?;
     let file2 = File::open(args.file2)?;
-    let res = compare_files(&file1, &file2)?;
+    let res = compare_files_threaded(file1, file2)?;
     match res {
         true => println!("Files are identical"),
         false => println!("Files are not identical"),

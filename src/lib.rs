@@ -1,293 +1,138 @@
 use std::io::prelude::*;
 use std::fs::File;
+use std::sync::{Arc, Barrier, mpsc};
+use std::thread;
 pub mod error;
 use crate::error::Result;
 
-pub fn compare_files(mut file1: &File, mut file2: &File) -> Result<bool> {
-    let mut buf1 = [0;64];
-    let mut buf2 = [0;64];
+pub fn compare_files_threaded(mut file1: File, mut file2: File) -> Result<bool> {
+    
+    let (tx1, rx1) = mpsc::channel();
+    let (tx2, rx2) = mpsc::channel();
+
+    let barrier = Arc::new(Barrier::new(2));
+    let barrier1 = Arc::clone(&barrier);
+    let barrier2 = Arc::clone(&barrier);
+
+    thread::spawn(move || {
+        let mut buf = [0;128];
+        'a: loop {
+            let bytes_read = file1.read(&mut buf).unwrap();
+            if bytes_read < buf.len() {
+                for i in buf {
+                    if let Err(_) = tx1.send(i16::from(i)) {
+                        break 'a;
+                    };
+                    barrier1.wait();
+                }
+                if let Err(_) = tx1.send(-1) {
+                    break 'a;
+                };
+                break;
+            }
+            for i in buf {
+                if let Err(_) = tx1.send(i16::from(i)) {
+                     break 'a;
+                };
+                barrier1.wait();
+            } 
+        }
+    });
+
+    thread::spawn(move || {
+        let mut buf = [0;128];
+        'a: loop {
+            let bytes_read = file2.read(&mut buf).unwrap();
+            if bytes_read < buf.len() {
+                for i in buf {
+                    if let Err(_) = tx2.send(i16::from(i)) {
+                        break 'a;
+                    };
+                    barrier2.wait();
+                }
+                if let Err(_) = tx2.send(-1) {
+                    break 'a;
+                };
+                break;
+            }
+            for i in buf {
+                if let Err(_) = tx2.send(i16::from(i)) {
+                     break 'a;
+                };
+                barrier2.wait();
+            } 
+        }
+    });
+
     loop {
-        let bytes_read1 = file1.read(&mut buf1)?;
-        let bytes_read2 = file2.read(&mut buf2)?;
-        if bytes_read1 == 0 && bytes_read2 == 0 {
+        let byte1 = rx1.recv().unwrap();
+        let byte2 = rx2.recv().unwrap();
+
+        if byte1 != byte2 {
+            return Ok(false);
+        }
+        if byte1 == -1 && byte2 == -1 {
             return Ok(true);
         }
-        if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-            return Ok(false);
-        };
+        
     }
 }
 
-pub mod bench {
+#[cfg(test)]
+mod test {
     use super::*;
 
-    pub fn compare_files_128k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;131072];
-        let mut buf2 = [0;131072];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_64k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;65536];
-        let mut buf2 = [0;65536];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_32k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;32768];
-        let mut buf2 = [0;32768];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_16k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;16384];
-        let mut buf2 = [0;16384];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_8k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;8192];
-        let mut buf2 = [0;8192];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_4k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;4096];
-        let mut buf2 = [0;4096];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn identical_files() -> Result<()> {
+        let file1 = File::open("test_files/orig.txt")?;
+        let file2 = File::open("test_files/orig copy.txt")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, true);
+        Ok(())
     }
 
-    pub fn compare_files_2k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;2048];
-        let mut buf2 = [0;2048];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_1k(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;1024];
-        let mut buf2 = [0;1024];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn different_beggining() -> Result<()> {
+        let file1 = File::open("test_files/orig.txt")?;
+        let file2 = File::open("test_files/orig beginning.txt")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, false);
+        Ok(())
     }
 
-    pub fn compare_files_512(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;512];
-        let mut buf2 = [0;512];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_256(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;256];
-        let mut buf2 = [0;256];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-    
-    pub fn compare_files_128(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;128];
-        let mut buf2 = [0;128];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn different_end() -> Result<()> {
+        let file1 = File::open("test_files/orig.txt")?;
+        let file2 = File::open("test_files/orig end.txt")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, false);
+        Ok(())
     }
 
-    pub fn compare_files_64(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;64];
-        let mut buf2 = [0;64];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn identical_photos() -> Result<()> {
+        let file1 = File::open("test_files/banana.jpeg")?;
+        let file2 = File::open("test_files/banana copy.jpeg")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, true);
+        Ok(())
     }
 
-    pub fn compare_files_32(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;32];
-        let mut buf2 = [0;32];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn one_pixel_difference() -> Result<()> {
+        let file1 = File::open("test_files/banana.jpeg")?;
+        let file2 = File::open("test_files/banana black pixel.jpeg")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, false);
+        Ok(())
     }
 
-    pub fn compare_files_16(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;16];
-        let mut buf2 = [0;16];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-
-    pub fn compare_files_8(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;8];
-        let mut buf2 = [0;8];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-
-    pub fn compare_files_4(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;4];
-        let mut buf2 = [0;4];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-
-    pub fn compare_files_2(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;2];
-        let mut buf2 = [0;2];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
-    }
-
-    pub fn compare_files_1(mut file1: &File, mut file2: &File) -> Result<bool> {
-        let mut buf1 = [0;1];
-        let mut buf2 = [0;1];
-        loop {
-            let bytes_read1 = file1.read(&mut buf1)?;
-            let bytes_read2 = file2.read(&mut buf2)?;
-            if bytes_read1 == 0 && bytes_read2 == 0 {
-                return Ok(true);
-            }
-            if bytes_read1 != bytes_read2 || buf1[..bytes_read1] != buf2[..bytes_read2] {
-                return Ok(false);
-            };
-        }
+    #[test]
+    fn different_pictures() -> Result<()> {
+        let file1 = File::open("test_files/banana.jpeg")?;
+        let file2 = File::open("test_files/no banana.jpeg")?;
+        let res = compare_files_threaded(file1, file2)?;
+        assert_eq!(res, false);
+        Ok(())
     }
 }
